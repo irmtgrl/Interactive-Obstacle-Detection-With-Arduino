@@ -9,6 +9,11 @@
 #define YELLOW_LED_PIN 10
 #define OUTPUT_PINS_ARRAY_LENGTH 3
 #define INPUT_PINS_ARRAY_LENGTH 2
+#define IR_BUTTON_OK 28
+#define IR_BUTTON_RIGHT 90
+#define IR_BUTTON_LEFT 8
+#define IR_BUTTON_UP 24
+#define IR_BUTTON_DOWN 82
 
 LiquidCrystal_I2C lcd(0x27,16,2);
 
@@ -117,6 +122,31 @@ void setLCDMessage(double distance = 0.0) {
   }
 }
 
+void handleIRCommand(int command) {
+  switch (command) {
+    case IR_BUTTON_OK: {
+      unlockApplication();
+      break;
+    } 
+    case IR_BUTTON_RIGHT: {
+      // TO BE DETERMINED;
+      break;
+    }
+    case IR_BUTTON_LEFT: {
+      // TO BE DETERMINED;
+      break;
+    }
+    case IR_BUTTON_UP: {
+      // TO BE DETERMINED;
+      break;
+    }
+    case IR_BUTTON_DOWN: {
+      // TO BE DETERMINED;
+      break;
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
@@ -134,6 +164,11 @@ void setup() {
 
 void loop() {
   unsigned long timeNow = millis();
+
+  if(IrReceiver.decode()) {
+    handleIRCommand(IrReceiver.decodedIRData.command);
+    IrReceiver.resume();
+  }
 
   if(isApplicationLocked) {
     setLCDMessage();
