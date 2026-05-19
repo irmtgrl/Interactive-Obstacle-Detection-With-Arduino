@@ -8,6 +8,8 @@
 #define IR_RECEIVER_PIN 5
 #define RED_LED_PIN 9
 #define YELLOW_LED_PIN 10
+#define BLUE_LED_PIN 11
+#define LDR_PIN A0
 
 #define IR_BUTTON_OK 28
 #define IR_BUTTON_RIGHT 90
@@ -25,7 +27,11 @@
 #define CM_TO_FEET 0.0328
 #define EEPROM_ADDRESS_DISTANCE_UNIT 201
 
-#define OUTPUT_PINS_ARRAY_LENGTH 3
+// #define LCD_MODE_DISTANCE
+// #define LCD_MODE_LUMINOSITY
+// #define LCD_MODE_
+
+#define OUTPUT_PINS_ARRAY_LENGTH 4
 #define INPUT_PINS_ARRAY_LENGTH 2
 #define DISTANCE_UNITS_ARRAY_LENGTH 4
 
@@ -52,7 +58,10 @@ int buttonBounceDelay = 200;
 //DISTANCE UNIT CHANGES
 int preferedDistanceUnitIndex = 0;
 
-int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN };
+//LUMINOSITY & NIGHT LIGHT
+long luminosity = 500;
+
+int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN, BLUE_LED_PIN };
 int inputPins[INPUT_PINS_ARRAY_LENGTH] = { ECHO_PIN, BUTTON_PIN };
 int distanceUnits[DISTANCE_UNITS_ARRAY_LENGTH] = { DISTANCE_UNIT_CM, DISTANCE_UNIT_INCH, DISTANCE_UNIT_ROD, DISTANCE_UNIT_FEET };
 double unitMultiplier[DISTANCE_UNITS_ARRAY_LENGTH] = { CM_TO_CM, CM_TO_INCH, CM_TO_ROD, CM_TO_FEET };
@@ -188,6 +197,18 @@ void decrementtUnitIndex() {
   preferedDistanceUnitIndex = (preferedDistanceUnitIndex - 1 + DISTANCE_UNITS_ARRAY_LENGTH) % DISTANCE_UNITS_ARRAY_LENGTH; 
 }
 
+void measureLuminosity() {
+  luminosity = analogRead(LDR_PIN);
+}
+
+void handleNightLight() {
+  if(luminosity < 500) {
+    digitalWrite(BLUE_LED_PIN, HIGH);
+  } else {
+    digitalWrite(BLUE_LED_PIN, LOW);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
@@ -220,6 +241,9 @@ void loop() {
       lastTimeSensorWasTriggered = timeNow;
       triggerSensor();
     }
+
+    measureLuminosity();
+    handleNightLight();
 
     if(newDistanceDetected) {
       newDistanceDetected = false;
