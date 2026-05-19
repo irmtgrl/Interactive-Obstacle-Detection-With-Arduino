@@ -1,5 +1,6 @@
 #include <LiquidCrystal_I2C.h>
 #include <IRremote.hpp>
+#include <EEPROM.h>
 
 #define BUTTON_PIN 2
 #define ECHO_PIN 3
@@ -22,6 +23,7 @@
 #define CM_TO_INCH 0.3937
 #define CM_TO_ROD 0.0019
 #define CM_TO_FEET 0.0328
+#define EEPROM_ADDRESS_DISTANCE_UNIT 201
 
 #define OUTPUT_PINS_ARRAY_LENGTH 3
 #define INPUT_PINS_ARRAY_LENGTH 2
@@ -63,6 +65,14 @@ void initializePinModes() {
   for(int i = 0; i < INPUT_PINS_ARRAY_LENGTH; i ++) {
     pinMode(inputPins[i], INPUT_PULLUP);
   }
+}
+
+void initializeLCD() {
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.print("Initializing...");
+  delay(500);
 }
 
 void triggerSensor() {
@@ -151,10 +161,12 @@ void handleIRCommand(int command) {
     } 
     case IR_BUTTON_RIGHT: {
       incrementUnitIndex();
+      EEPROM.write(EEPROM_ADDRESS_DISTANCE_UNIT, preferedDistanceUnitIndex);
       break;
     }
     case IR_BUTTON_LEFT: {
       decrementtUnitIndex();
+      EEPROM.write(EEPROM_ADDRESS_DISTANCE_UNIT, preferedDistanceUnitIndex);
       break;
     }
     case IR_BUTTON_UP: {
@@ -180,12 +192,14 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
 
-  lcd.init();
-  lcd.backlight();
-
+  initializeLCD();
   initializePinModes();
 
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
+
+  preferedDistanceUnitIndex = EEPROM.read(EEPROM_ADDRESS_DISTANCE_UNIT);
+  if(preferedDistanceUnitIndex == 255)
+    preferedDistanceUnitIndex = 0;
 
   attachInterrupt(digitalPinToInterrupt(ECHO_PIN), detectNewDistance, CHANGE);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), unlockApplication, FALLING);
