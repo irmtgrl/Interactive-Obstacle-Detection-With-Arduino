@@ -36,7 +36,7 @@ void initializePinModes() {
     pinMode(outputPins[i], OUTPUT);
   }
   for(int i = 0; i < INPUT_PINS_ARRAY_LENGTH; i ++) {
-    pinMode(inputPins[i], INPUT);
+    pinMode(inputPins[i], INPUT_PULLUP);
   }
 }
 
@@ -95,6 +95,26 @@ void unlockApplication() {
   }
 }
 
+void setLCDMessage(double distance = 0.0) {
+  if(isApplicationLocked) {
+    lcd.setCursor(0,0);
+    lcd.print("App is locked!   ");
+    lcd.setCursor(0,1);
+    lcd.print("Press a button.  ");
+  } else {
+    if(distance < 30) {
+      lcd.setCursor(0,1);
+      lcd.print("!! OBSTACLE !!");
+    } else {
+      lcd.setCursor(0,1);
+      lcd.print("No obstacle.      ");
+    }
+    lcd.setCursor(0,0);
+    lcd.print("Distance,: ");
+    lcd.print(distance);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
@@ -113,7 +133,7 @@ void loop() {
   unsigned long timeNow = millis();
 
   if(isApplicationLocked) {
-    Serial.println("Application is locked! Press the button to unlock it.");
+    setLCDMessage();
   } else {
     if(timeNow - lastTimeSensorWasTriggered > triggerDelay) {
       lastTimeSensorWasTriggered = timeNow;
@@ -123,7 +143,7 @@ void loop() {
     if(newDistanceDetected) {
       newDistanceDetected = false;
       double distance = measureDistance();
-      Serial.println(distance);
+      setLCDMessage(distance);
       if(distance < 10) {
         distance = 400.0;
         lockApplication();
