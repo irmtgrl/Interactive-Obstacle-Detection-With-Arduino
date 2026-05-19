@@ -1,8 +1,10 @@
 #include <LiquidCrystal_I2C.h>
+#include <IRremote.hpp>
 
 #define BUTTON_PIN 2
 #define ECHO_PIN 3
 #define TRIGGER_PIN 4
+#define IR_RECEIVER_PIN 5
 #define RED_LED_PIN 9
 #define YELLOW_LED_PIN 10
 #define OUTPUT_PINS_ARRAY_LENGTH 3
@@ -121,9 +123,10 @@ void setup() {
 
   lcd.init();
   lcd.backlight();
-  lcd.print("Hello!");
 
   initializePinModes();
+
+  IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
 
   attachInterrupt(digitalPinToInterrupt(ECHO_PIN), detectNewDistance, CHANGE);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), unlockApplication, FALLING);
