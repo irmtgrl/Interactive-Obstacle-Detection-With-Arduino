@@ -1,24 +1,38 @@
-#define TRIGGER_PIN 2
+#define BUTTON_PIN 2
 #define ECHO_PIN 3
+#define TRIGGER_PIN 4
+#define RED_LED_PIN 9
 #define YELLOW_LED_PIN 10
-#define OUTPUT_PINS_ARRAY_LENGTH 2
+#define OUTPUT_PINS_ARRAY_LENGTH 3
+#define INPUT_PINS_ARRAY_LENGTH 2
 
-unsigned long lastTimeSensorWasTriggered;
+//ULTRASONIC SENSOR
+unsigned long lastTimeSensorWasTriggered = 0;
 int triggerDelay = 300;
-bool newDistanceDetected = false;
-long timeBeforeTrigger;
-long timeAfterTrigger;
+volatile bool newDistanceDetected = false;
+volatile long timeBeforeTrigger = 0;
+volatile long timeAfterTrigger = 0;
 double previousDistance = 400;
-double currentDistance;
+
+//YELLOW LED
 int yellowLedBlinkRate = 1000;
-unsigned long lastTimeYellowLedWasLit;
+unsigned long lastTimeYellowLedWasLit = 0;
 int yellowLedState = LOW;
 
-int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, YELLOW_LED_PIN };
+//APPLICATION LOCK-UNLOCK
+volatile bool isApplicationLocked = false;
+volatile unsigned long lastTimeButtonWasPressed = 0;
+int buttonBounceDelay = 200;
+
+int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN };
+int inputPins[INPUT_PINS_ARRAY_LENGTH] = { ECHO_PIN, BUTTON_PIN };
 
 void initializePinModes() {
   for(int i = 0; i < OUTPUT_PINS_ARRAY_LENGTH; i ++) {
     pinMode(outputPins[i], OUTPUT);
+  }
+  for(int i = 0; i < INPUT_PINS_ARRAY_LENGTH; i ++) {
+    pinMode(inputPins[i], INPUT);
   }
 }
 
@@ -40,24 +54,40 @@ void detectNewDistance() {
 }
 
 double measureDistance() {
+  noInterrupts();
   double time = timeAfterTrigger - timeBeforeTrigger;
+  interrupts();
   double distance = time / 58.3;
   distance = previousDistance * 0.6 + distance * 0.4;
   if(distance > 400.0 || distance < 0) {
     return previousDistance;
   }
   previousDistance = distance;
-  currentDistance = distance;
   return distance;
 }
 
-void adjustLEDBlinkRate() {
-  if(currentDistance < 20) {
+void adjustLEDBlinkRate(double distance) {
+  if(distance < 20) {
     yellowLedBlinkRate = 60;
-  } else if(currentDistance > 20 && currentDistance < 50) {
+  } else if(distance > 20 && distance < 50) {
     yellowLedBlinkRate = 300;
   } else {
     yellowLedBlinkRate = 1000;
+  }
+}
+
+void lockApplication() {
+  isApplicationLocked = true;
+  digitalWrite(YELLOW_LED_PIN, LOW);
+  digitalWrite(RED_LED_PIN, HIGH);
+}
+
+void unlockApplication() {
+  unsigned long timeNow = millis(); 
+  if(timeNow -  lastTimeButtonWasPressed > buttonBounceDelay) {
+    lastTimeButtonWasPressed = timeNow;
+    isApplicationLocked = false;
+    digitalWrite(RED_LED_PIN, LOW);
   }
 }
 
@@ -65,29 +95,38 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
 
-  pinMode(ECHO_PIN, INPUT);
   initializePinModes();
 
   attachInterrupt(digitalPinToInterrupt(ECHO_PIN), detectNewDistance, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), unlockApplication, FALLING);
 }
 
 void loop() {
   unsigned long timeNow = millis();
 
-  if(timeNow - lastTimeSensorWasTriggered > triggerDelay) {
-    lastTimeSensorWasTriggered = timeNow;
-    triggerSensor();
-  }
+  if(isApplicationLocked) {
+    Serial.println("Application is locked! Press the button to unlock it.");
+  } else {
+    if(timeNow - lastTimeSensorWasTriggered > triggerDelay) {
+      lastTimeSensorWasTriggered = timeNow;
+      triggerSensor();
+    }
 
-  if(newDistanceDetected) {
-    double distance = measureDistance();
-    Serial.println(distance);
-    adjustLEDBlinkRate();
-  }
+    if(newDistanceDetected) {
+      newDistanceDetected = false;
+      double distance = measureDistance();
+      Serial.println(distance);
+      if(distance < 10) {
+        distance = 400.0;
+        lockApplication();
+      }
+      adjustLEDBlinkRate(distance);
+    }
 
-  if(timeNow - lastTimeYellowLedWasLit > yellowLedBlinkRate) {
-    yellowLedState = !yellowLedState;
-    lastTimeYellowLedWasLit = timeNow;
-    digitalWrite(YELLOW_LED_PIN, yellowLedState);
+    if(timeNow - lastTimeYellowLedWasLit > yellowLedBlinkRate) {
+      yellowLedState = !yellowLedState;
+      lastTimeYellowLedWasLit = timeNow;
+      digitalWrite(YELLOW_LED_PIN, yellowLedState);
+    }
   }
 }
