@@ -14,12 +14,18 @@
 #define IR_BUTTON_UP 24
 #define IR_BUTTON_DOWN 82
 
-#define DISTANCE_UNIT_CM 99
-#define DISTANCE_UNIT_INCH 100
+#define DISTANCE_UNIT_CM 101
+#define DISTANCE_UNIT_INCH 102
+#define DISTANCE_UNIT_ROD 103
+#define DISTANCE_UNIT_FEET 104
+#define CM_TO_CM 1
+#define CM_TO_INCH 0.3937
+#define CM_TO_ROD 0.0019
+#define CM_TO_FEET 0.0328
 
 #define OUTPUT_PINS_ARRAY_LENGTH 3
 #define INPUT_PINS_ARRAY_LENGTH 2
-#define DISTANCE_UNITS_ARRAY_LENGTH 2
+#define DISTANCE_UNITS_ARRAY_LENGTH 4
 
 LiquidCrystal_I2C lcd(0x27,16,2);
 
@@ -46,7 +52,9 @@ int preferedDistanceUnitIndex = 0;
 
 int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN };
 int inputPins[INPUT_PINS_ARRAY_LENGTH] = { ECHO_PIN, BUTTON_PIN };
-int distanceUnits[DISTANCE_UNITS_ARRAY_LENGTH] = { DISTANCE_UNIT_CM, DISTANCE_UNIT_INCH };
+int distanceUnits[DISTANCE_UNITS_ARRAY_LENGTH] = { DISTANCE_UNIT_CM, DISTANCE_UNIT_INCH, DISTANCE_UNIT_ROD, DISTANCE_UNIT_FEET };
+double unitMultiplier[DISTANCE_UNITS_ARRAY_LENGTH] = { CM_TO_CM, CM_TO_INCH, CM_TO_ROD, CM_TO_FEET };
+String unitName[DISTANCE_UNITS_ARRAY_LENGTH] = { "CM", "INCH", "ROD", "FEET" };
 
 void initializePinModes() {
   for(int i = 0; i < OUTPUT_PINS_ARRAY_LENGTH; i ++) {
@@ -127,8 +135,11 @@ void setLCDMessage(double distance = 0.0) {
       lcd.print("No obstacle.      ");
     }
     lcd.setCursor(0,0);
-    lcd.print("Distance,: ");
-    lcd.print(distance);
+    lcd.print("X in ");
+    lcd.print(unitName[preferedDistanceUnitIndex]);
+    lcd.print(" ");
+    lcd.print(distance * unitMultiplier[preferedDistanceUnitIndex]);
+    lcd.print("     ");
   }
 }
 
@@ -140,12 +151,10 @@ void handleIRCommand(int command) {
     } 
     case IR_BUTTON_RIGHT: {
       incrementUnitIndex();
-      Serial.print(distanceUnits[preferedDistanceUnitIndex]);
       break;
     }
     case IR_BUTTON_LEFT: {
       decrementtUnitIndex();
-      Serial.print(distanceUnits[preferedDistanceUnitIndex]);
       break;
     }
     case IR_BUTTON_UP: {
