@@ -1,3 +1,5 @@
+#include <LiquidCrystal_I2C.h>
+
 #define BUTTON_PIN 2
 #define ECHO_PIN 3
 #define TRIGGER_PIN 4
@@ -5,6 +7,8 @@
 #define YELLOW_LED_PIN 10
 #define OUTPUT_PINS_ARRAY_LENGTH 3
 #define INPUT_PINS_ARRAY_LENGTH 2
+
+LiquidCrystal_I2C lcd(0x27,16,2);
 
 //ULTRASONIC SENSOR
 unsigned long lastTimeSensorWasTriggered = 0;
@@ -94,6 +98,10 @@ void unlockApplication() {
 void setup() {
   Serial.begin(115200);
   Serial.println("Interactive Obstacle Detection: On!");
+
+  lcd.init();
+  lcd.backlight();
+  lcd.print("Hello!");
 
   initializePinModes();
 
