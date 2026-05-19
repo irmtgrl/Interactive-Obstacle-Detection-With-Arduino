@@ -7,13 +7,19 @@
 #define IR_RECEIVER_PIN 5
 #define RED_LED_PIN 9
 #define YELLOW_LED_PIN 10
-#define OUTPUT_PINS_ARRAY_LENGTH 3
-#define INPUT_PINS_ARRAY_LENGTH 2
+
 #define IR_BUTTON_OK 28
 #define IR_BUTTON_RIGHT 90
 #define IR_BUTTON_LEFT 8
 #define IR_BUTTON_UP 24
 #define IR_BUTTON_DOWN 82
+
+#define DISTANCE_UNIT_CM 99
+#define DISTANCE_UNIT_INCH 100
+
+#define OUTPUT_PINS_ARRAY_LENGTH 3
+#define INPUT_PINS_ARRAY_LENGTH 2
+#define DISTANCE_UNITS_ARRAY_LENGTH 2
 
 LiquidCrystal_I2C lcd(0x27,16,2);
 
@@ -35,8 +41,12 @@ volatile bool isApplicationLocked = false;
 volatile unsigned long lastTimeButtonWasPressed = 0;
 int buttonBounceDelay = 200;
 
+//DISTANCE UNIT CHANGES
+int preferedDistanceUnitIndex = 0;
+
 int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN };
 int inputPins[INPUT_PINS_ARRAY_LENGTH] = { ECHO_PIN, BUTTON_PIN };
+int distanceUnits[DISTANCE_UNITS_ARRAY_LENGTH] = { DISTANCE_UNIT_CM, DISTANCE_UNIT_INCH };
 
 void initializePinModes() {
   for(int i = 0; i < OUTPUT_PINS_ARRAY_LENGTH; i ++) {
@@ -129,11 +139,13 @@ void handleIRCommand(int command) {
       break;
     } 
     case IR_BUTTON_RIGHT: {
-      // TO BE DETERMINED;
+      incrementUnitIndex();
+      Serial.print(distanceUnits[preferedDistanceUnitIndex]);
       break;
     }
     case IR_BUTTON_LEFT: {
-      // TO BE DETERMINED;
+      decrementtUnitIndex();
+      Serial.print(distanceUnits[preferedDistanceUnitIndex]);
       break;
     }
     case IR_BUTTON_UP: {
@@ -145,6 +157,14 @@ void handleIRCommand(int command) {
       break;
     }
   }
+}
+
+void incrementUnitIndex() {
+  preferedDistanceUnitIndex = (preferedDistanceUnitIndex + 1) % DISTANCE_UNITS_ARRAY_LENGTH; 
+}
+
+void decrementtUnitIndex() {
+  preferedDistanceUnitIndex = (preferedDistanceUnitIndex - 1 + DISTANCE_UNITS_ARRAY_LENGTH) % DISTANCE_UNITS_ARRAY_LENGTH; 
 }
 
 void setup() {
