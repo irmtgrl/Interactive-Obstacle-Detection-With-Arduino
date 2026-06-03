@@ -34,6 +34,7 @@
 #define OUTPUT_PINS_ARRAY_LENGTH 4
 #define INPUT_PINS_ARRAY_LENGTH 2
 #define DISTANCE_UNITS_ARRAY_LENGTH 4
+#define DISPLAY_PREFERENCES_ARRAY_LENGTH 3
 
 LiquidCrystal_I2C lcd(0x27,16,2);
 
@@ -61,11 +62,19 @@ int preferedDistanceUnitIndex = 0;
 //LUMINOSITY & NIGHT LIGHT
 long luminosity = 500;
 
+//DISPLAY PREFERENCE
+int displayPreferenceIndex = 0;
+
+//IR BUTTON DEBOUNCE
+unsigned long lastTimeIrCommandDetected = 0;
+int IrButtonInterval = 100;
+
 int outputPins[OUTPUT_PINS_ARRAY_LENGTH] = { TRIGGER_PIN, RED_LED_PIN, YELLOW_LED_PIN, BLUE_LED_PIN };
 int inputPins[INPUT_PINS_ARRAY_LENGTH] = { ECHO_PIN, BUTTON_PIN };
 int distanceUnits[DISTANCE_UNITS_ARRAY_LENGTH] = { DISTANCE_UNIT_CM, DISTANCE_UNIT_INCH, DISTANCE_UNIT_ROD, DISTANCE_UNIT_FEET };
 double unitMultiplier[DISTANCE_UNITS_ARRAY_LENGTH] = { CM_TO_CM, CM_TO_INCH, CM_TO_ROD, CM_TO_FEET };
 String unitName[DISTANCE_UNITS_ARRAY_LENGTH] = { "CM", "INCH", "ROD", "FEET" };
+String displayPreferences[DISPLAY_PREFERENCES_ARRAY_LENGTH] = {"Distance", "Luminosity", "Message"};
 
 void initializePinModes() {
   for(int i = 0; i < OUTPUT_PINS_ARRAY_LENGTH; i ++) {
@@ -140,12 +149,14 @@ void unlockApplication() {
 }
 
 void setLCDMessage(double distance = 0.0) {
+  String currentDisplay = displayPreferences[displayPreferenceIndex];
+
   if(isApplicationLocked) {
     lcd.setCursor(0,0);
     lcd.print("App is locked!   ");
     lcd.setCursor(0,1);
     lcd.print("Press a button.  ");
-  } else {
+  } else if(currentDisplay == "Distance") {
     if(distance < 30) {
       lcd.setCursor(0,1);
       lcd.print("!! OBSTACLE !!");
@@ -159,6 +170,17 @@ void setLCDMessage(double distance = 0.0) {
     lcd.print(" ");
     lcd.print(distance * unitMultiplier[preferedDistanceUnitIndex]);
     lcd.print("     ");
+  } else if (currentDisplay == "Luminosity") {
+    lcd.setCursor(0,0);
+    lcd.print("Env luminosity: ");
+    lcd.setCursor(0,1);
+    lcd.print(analogRead(LDR_PIN));
+    lcd.print("             ");
+  } else {
+    lcd.setCursor(0,0);
+    lcd.print("Hey buddy!     ");
+    lcd.setCursor(0,1);
+    lcd.print("Have a great day! ");
   }
 }
 
@@ -174,16 +196,16 @@ void handleIRCommand(int command) {
       break;
     }
     case IR_BUTTON_LEFT: {
-      decrementtUnitIndex();
+      decrementUnitIndex();
       EEPROM.write(EEPROM_ADDRESS_DISTANCE_UNIT, preferedDistanceUnitIndex);
       break;
     }
     case IR_BUTTON_UP: {
-      // TO BE DETERMINED;
+      incrementDisplayIndex();
       break;
     }
     case IR_BUTTON_DOWN: {
-      // TO BE DETERMINED;
+      decrementDisplayIndex();
       break;
     }
   }
@@ -193,7 +215,7 @@ void incrementUnitIndex() {
   preferedDistanceUnitIndex = (preferedDistanceUnitIndex + 1) % DISTANCE_UNITS_ARRAY_LENGTH; 
 }
 
-void decrementtUnitIndex() {
+void decrementUnitIndex() {
   preferedDistanceUnitIndex = (preferedDistanceUnitIndex - 1 + DISTANCE_UNITS_ARRAY_LENGTH) % DISTANCE_UNITS_ARRAY_LENGTH; 
 }
 
@@ -207,6 +229,14 @@ void handleNightLight() {
   } else {
     digitalWrite(BLUE_LED_PIN, LOW);
   }
+}
+
+void incrementDisplayIndex() {
+  displayPreferenceIndex = (displayPreferenceIndex + 1) % DISPLAY_PREFERENCES_ARRAY_LENGTH;
+}
+
+void decrementDisplayIndex() {
+  displayPreferenceIndex = (displayPreferenceIndex - 1 + DISPLAY_PREFERENCES_ARRAY_LENGTH) % DISPLAY_PREFERENCES_ARRAY_LENGTH; 
 }
 
 void setup() {
@@ -230,9 +260,12 @@ void loop() {
   unsigned long timeNow = millis();
 
   if(IrReceiver.decode()) {
-    handleIRCommand(IrReceiver.decodedIRData.command);
-    IrReceiver.resume();
+    if(timeNow - lastTimeIrCommandDetected > IrButtonInterval) {
+      lastTimeIrCommandDetected = timeNow;
+      handleIRCommand(IrReceiver.decodedIRData.command);
+    }
   }
+  IrReceiver.resume();
 
   if(isApplicationLocked) {
     setLCDMessage();
